@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Racing Game</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #151515;
+  color: white;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+h1 { color: #00eaff; }
+#game {
+  position: relative;
+  width: 320px;
+  height: 500px;
+  margin: auto;
+  overflow: hidden;
+  background: #444;
+  border-left: 6px solid white;
+  border-right: 6px solid white;
+}
+#line {
+  position: absolute;
+  left: 50%;
+  height: 100%;
+  border-left: 5px dashed white;
+}
+#car {
+  position: absolute;
+  bottom: 20px;
+  left: 135px;
+  width: 40px;
+  height: 70px;
+  background: #00eaff;
+  border-radius: 10px;
+}
+.enemy {
+  position: absolute;
+  width: 40px;
+  height: 70px;
+  background: #ff3333;
+  border-radius: 10px;
+}
+#score { font-size: 22px; margin: 10px; }
+button {
+  padding: 15px 25px;
+  margin: 8px;
+  border: none;
+  border-radius: 10px;
+  background: #00eaff;
+  font-size: 18px;
+}
+</style>
+</head>
+<body>
+<h1>🏎️ RACING GAME</h1>
+<div id="score">Очки: 0</div>
+<div id="game">
+  <div id="line"></div>
+  <div id="car"></div>
+</div>
+<div>
+  <button onclick="move(-1)">⬅️</button>
+  <button onclick="move(1)">➡️</button>
+</div>
+<script>
+const car = document.getElementById("car");
+const game = document.getElementById("game");
+const scoreText = document.getElementById("score");
+let lane = 1;
+let score = 0;
+let enemies = [];
+let running = true;
+function move(direction) {
+  lane = Math.max(0, Math.min(2, lane + direction));
+  car.style.left = (45 + lane * 90) + "px";
+}
+function spawnEnemy() {
+  if (!running) return;
+  const enemy = document.createElement("div");
+  enemy.className = "enemy";
+  enemy.style.left = (45 + Math.floor(Math.random() * 3) * 90) + "px";
+  enemy.style.top = "-80px";
+  game.appendChild(enemy);
+  enemies.push(enemy);
+}
+function update() {
+  if (!running) return;
+  enemies.forEach((enemy, index) => {
+    let y = parseFloat(enemy.style.top);
+    y += 5;
+    enemy.style.top = y + "px";
+    if (y > 500) {
+      enemy.remove();
+      enemies.splice(index, 1);
+      score++;
+      scoreText.textContent = "Очки: " + score;
+    }
+    const carY = 410;
+    const enemyX = parseInt(enemy.style.left);
+    const carX = parseInt(car.style.left);
+    if (y > carY - 60 && y < carY + 60 && enemyX === carX) {
+      running = false;
+      alert("Игра окончена! Очки: " + score);
+      location.reload();
+    }
+  });
+  requestAnimationFrame(update);
+}
+setInterval(spawnEnemy, 1300);
+update();
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft") move(-1);
+  if (e.key === "ArrowRight") move(1);
+});
+</script>
+</body>
+</html>
