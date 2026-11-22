@@ -1,127 +1,691 @@
+<!DOCTYPE html>
 
+<html lang="ru">
 
-    return true;
-  });
+<head>
 
-  speed = Math.min(5 + score * 0.08, 13);
+<meta charset="UTF-8">
 
-  updateStats();
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  animationId = requestAnimationFrame(update);
-}
+<title>Racing Game 2.0</title>
 
-function endGame() {
+<style>
 
-  running = false;
+*{box-sizing:border-box}
 
-  document.getElementById("finalScore").textContent = score;
+body{
 
-  document.getElementById("gameOver").classList.remove("hidden");
+margin:0;background:#10131b;color:white;
 
-  document.getElementById("menu").classList.remove("hidden");
-
-  document.getElementById("message").textContent = "💥 ФИНИШ!";
+font-family:Arial;text-align:center;overflow:hidden
 
 }
 
-function togglePause() {
+h1{color:#00eaff;text-shadow:0 0 15px #00eaff}
 
-  if (!running) return;
+button{
 
-  paused = !paused;
+background:linear-gradient(135deg,#00d9ff,#0066ff);
 
-  document.getElementById("message").textContent =
-    paused ? "⏸️ ПАУЗА" : "🏁 ПОЕХАЛИ!";
+border:0;color:white;padding:14px 25px;
+
+margin:8px;border-radius:12px;font-size:17px;
+
+font-weight:bold;cursor:pointer
+
 }
 
-function openGarage() {
+.screen{
 
-  if (running) return;
+position:fixed;inset:0;background:#101b2b;
 
-  document.getElementById("garage").classList.remove("hidden");
+display:flex;flex-direction:column;
 
-  renderGarage();
+justify-content:center;align-items:center;z-index:5
+
 }
 
-function closeGarage() {
-  document.getElementById("garage").classList.add("hidden");
+.hidden{display:none!important}
+
+#game{display:none}
+
+#hud{
+
+display:flex;justify-content:space-around;
+
+padding:12px;font-size:18px
+
 }
 
-function renderGarage() {
+canvas{
 
-  const area = document.getElementById("garageCars");
+display:block;margin:auto;background:#30343b;
 
-  area.innerHTML = "";
+width:min(100vw,400px);
 
-  cars.forEach((item, index) => {
+height:min(75vh,650px);
 
-    const button = document.createElement("button");
+touch-action:none
 
-    const owned = unlocked.includes(index);
-    const selected = selectedCar === index;
-
-    button.textContent =
-      item.emoji + " " + item.name + " — " +
-      (selected ? "ВЫБРАНА" :
-      owned ? "ВЫБРАТЬ" : "КУПИТЬ за " + item.price + " 🪙");
-
-    button.onclick = () => {
-
-      if (owned) {
-
-        selectedCar = index;
-
-        localStorage.setItem("selectedCar", index);
-
-        setCar();
-        renderGarage();
-
-      } else if (coins >= item.price) {
-
-        coins -= item.price;
-
-        unlocked.push(index);
-
-        localStorage.setItem(
-          "unlockedCars",
-          JSON.stringify(unlocked)
-        );
-
-        selectedCar = index;
-
-        localStorage.setItem("selectedCar", index);
-
-        updateStats();
-        setCar();
-        renderGarage();
-
-      } else {
-
-        alert("Недостаточно монет!");
-
-      }
-    };
-
-    area.appendChild(button);
-  });
 }
 
-document.addEventListener("keydown", e => {
+#controls{display:flex;justify-content:center;gap:50px}
 
-  if (e.key === "ArrowLeft") move(-1);
+.control{width:100px;font-size:25px;touch-action:none}
 
-  if (e.key === "ArrowRight") move(1);
+</style>
 
-  if (e.key === " " || e.key === "Escape") {
-    togglePause();
-  }
+</head>
+
+<body>
+
+<div id="menu" class="screen">
+
+<h1>🏎️ RACING GAME 2.0</h1>
+
+<p>Добро пожаловать в гонку!</p>
+
+<p>Собирай монеты и избегай машин.</p>
+
+<button onclick="startGame()">🏁 НАЧАТЬ ИГРУ</button>
+
+<button onclick="openGarage()">🚗 ГАРАЖ</button>
+
+<p>🪙 Монеты: <span id="menuCoins">0</span></p>
+
+<p>🏆 Рекорд: <span id="menuRecord">0</span></p>
+
+</div>
+
+<div id="garage" class="screen hidden">
+
+<h1>🚗 ГАРАЖ</h1>
+
+<div id="cars"></div>
+
+<p>🪙 Баланс: <span id="garageCoins">0</span></p>
+
+<button onclick="closeGarage()">НАЗАД</button>
+
+</div>
+
+<div id="gameover" class="screen hidden">
+
+<h1>💥 ИГРА ОКОНЧЕНА</h1>
+
+<h2>Счёт: <span id="finalScore">0</span></h2>
+
+<button onclick="startGame()">ИГРАТЬ СНОВА</button>
+
+<button onclick="mainMenu()">ГЛАВНОЕ МЕНЮ</button>
+
+</div>
+
+<div id="game">
+
+<div id="hud">
+
+<span>🏆 <span id="score">0</span></span>
+
+<span>🪙 <span id="coins">0</span></span>
+
+<span>❤️ <span id="lives">3</span></span>
+
+</div>
+
+<canvas id="canvas" width="400" height="650"></canvas>
+
+<div id="controls">
+
+<button class="control" id="left">⬅️</button>
+
+<button class="control" id="right">➡️</button>
+
+</div>
+
+</div>
+
+<script>
+
+const canvas=document.getElementById("canvas");
+
+const ctx=canvas.getContext("2d");
+
+let coins=Number(localStorage.getItem("coins"))||0;
+
+let record=Number(localStorage.getItem("record"))||0;
+
+let selectedCar=localStorage.getItem("car")||"red";
+
+const colors={
+
+red:"#ff3030",
+
+blue:"#168cff",
+
+green:"#21df75",
+
+gold:"#ffd700"
+
+};
+
+const prices={red:0,blue:100,green:200,gold:400};
+
+let player,enemies,money;
+
+let score=0,lives=3,speed=4;
+
+let running=false,animation;
+
+let spawnTimer=0,moneyTimer=0;
+
+let leftPressed=false,rightPressed=false;
+
+let audio;
+
+function sound(freq=500){
+
+try{
+
+audio ||= new (window.AudioContext||window.webkitAudioContext)();
+
+if(audio.state==="suspended")audio.resume();
+
+let o=audio.createOscillator();
+
+let g=audio.createGain();
+
+o.frequency.value=freq;
+
+o.connect(g);g.connect(audio.destination);
+
+g.gain.setValueAtTime(.08,audio.currentTime);
+
+g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.15);
+
+o.start();o.stop(audio.currentTime+.15);
+
+}catch(e){}
+
+}
+
+function updateCoins(){
+
+localStorage.setItem("coins",coins);
+
+document.getElementById("menuCoins").textContent=coins;
+
+document.getElementById("garageCoins").textContent=coins;
+
+document.getElementById("menuRecord").textContent=record;
+
+}
+
+function openGarage(){
+
+document.getElementById("menu").classList.add("hidden");
+
+document.getElementById("garage").classList.remove("hidden");
+
+let html="";
+
+for(let car in colors){
+
+let owned=localStorage.getItem("owned_"+car)==="yes"||car==="red";
+
+html+=`
+
+<div style="margin:12px">
+
+<span style="color:${colors[car]}">🚗 ${car.toUpperCase()}</span>
+
+<button onclick="chooseCar('${car}')">
+
+${selectedCar===car?"ВЫБРАНА":owned?"ВЫБРАТЬ":"КУПИТЬ 🪙 "+prices[car]}
+
+</button>
+
+</div>`;
+
+}
+
+document.getElementById("cars").innerHTML=html;
+
+updateCoins();
+
+}
+
+function chooseCar(car){
+
+let owned=localStorage.getItem("owned_"+car)==="yes"||car==="red";
+
+if(!owned){
+
+if(coins<prices[car]){
+
+alert("Недостаточно монет!");
+
+return;
+
+}
+
+coins-=prices[car];
+
+localStorage.setItem("owned_"+car,"yes");
+
+}
+
+selectedCar=car;
+
+localStorage.setItem("car",car);
+
+sound(700);
+
+openGarage();
+
+}
+
+function closeGarage(){
+
+document.getElementById("garage").classList.add("hidden");
+
+document.getElementById("menu").classList.remove("hidden");
+
+updateCoins();
+
+}
+
+function mainMenu(){
+
+running=false;
+
+cancelAnimationFrame(animation);
+
+document.getElementById("gameover").classList.add("hidden");
+
+document.getElementById("game").style.display="none";
+
+document.getElementById("menu").classList.remove("hidden");
+
+updateCoins();
+
+}
+
+function startGame(){
+
+cancelAnimationFrame(animation);
+
+document.getElementById("menu").classList.add("hidden");
+
+document.getElementById("garage").classList.add("hidden");
+
+document.getElementById("gameover").classList.add("hidden");
+
+document.getElementById("game").style.display="block";
+
+player={x:180,y:530,width:40,height:75};
+
+enemies=[];
+
+money=[];
+
+score=0;lives=3;speed=4;
+
+spawnTimer=0;moneyTimer=0;
+
+running=true;
+
+updateHUD();
+
+sound(600);
+
+animation=requestAnimationFrame(gameLoop);
+
+}
+
+function drawRoad(){
+
+ctx.fillStyle="#30343b";
+
+ctx.fillRect(40,0,320,650);
+
+ctx.fillStyle="#eee";
+
+ctx.fillRect(35,0,5,650);
+
+ctx.fillRect(360,0,5,650);
+
+ctx.fillStyle="white";
+
+let offset=(score*speed/4)%80;
+
+for(let y=-80+offset;y<650;y+=80){
+
+ctx.fillRect(195,y,10,45);
+
+}
+
+}
+
+function drawCar(x,y,color,w=40,h=75){
+
+ctx.fillStyle="#080808";
+
+ctx.fillRect(x+3,y+5,w-6,h-5);
+
+ctx.fillStyle=color;
+
+ctx.fillRect(x+5,y+5,w-10,h-10);
+
+// Переднее стекло
+
+ctx.fillStyle="#9eeaff";
+
+ctx.fillRect(x+10,y+10,w-20,17);
+
+// Заднее стекло
+
+ctx.fillStyle="#222";
+
+ctx.fillRect(x+10,y+47,w-20,13);
+
+// Передние фары
+
+ctx.fillStyle="#fff";
+
+ctx.fillRect(x+7,y+5,8,5);
+
+ctx.fillRect(x+w-15,y+5,8,5);
+
+// Задние фонари
+
+ctx.fillStyle="#ff2020";
+
+ctx.fillRect(x+7,y+h-10,8,5);
+
+ctx.fillRect(x+w-15,y+h-10,8,5);
+
+// Колёса
+
+ctx.fillStyle="#080808";
+
+ctx.fillRect(x,y+15,5,15);
+
+ctx.fillRect(x+w-5,y+15,5,15);
+
+ctx.fillRect(x,y+50,5,15);
+
+ctx.fillRect(x+w-5,y+50,5,15);
+
+}
+
+function drawCoin(x,y){
+
+ctx.beginPath();
+
+ctx.arc(x,y,12,0,Math.PI*2);
+
+ctx.fillStyle="#ffd700";
+
+ctx.fill();
+
+ctx.strokeStyle="#fff4a0";
+
+ctx.lineWidth=3;
+
+ctx.stroke();
+
+ctx.fillStyle="#8c6200";
+
+ctx.font="bold 14px Arial";
+
+ctx.textAlign="center";
+
+ctx.fillText("$",x,y+5);
+
+}
+
+function spawnEnemy(){
+
+let lanes=[75,135,225,285];
+
+let lane=lanes[Math.floor(Math.random()*lanes.length)];
+
+enemies.push({
+
+x:lane,y:-90,width:40,height:75,
+
+color:["#168cff","#21df75","#eee"][Math.floor(Math.random()*3)]
 
 });
 
-setCar();
-updateStats();
+}
+
+function spawnCoin(){
+
+let lanes=[90,150,250,310];
+
+money.push({
+
+x:lanes[Math.floor(Math.random()*lanes.length)],
+
+y:-20
+
+});
+
+}
+
+function collision(a,b){
+
+return a.x+7<b.x+b.width-7&&
+
+a.x+a.width-7>b.x+7&&
+
+a.y+10<b.y+b.height-10&&
+
+a.y+a.height-10>b.y+10;
+
+}
+
+function updateHUD(){
+
+document.getElementById("score").textContent=score;
+
+document.getElementById("coins").textContent=coins;
+
+document.getElementById("lives").textContent=lives;
+
+}
+
+function gameLoop(){
+
+if(!running)return;
+
+ctx.clearRect(0,0,400,650);
+
+drawRoad();
+
+if(leftPressed)player.x-=5;
+
+if(rightPressed)player.x+=5;
+
+player.x=Math.max(45,Math.min(315,player.x));
+
+spawnTimer++;
+
+moneyTimer++;
+
+if(spawnTimer>Math.max(25,85-speed*5)){
+
+spawnEnemy();
+
+spawnTimer=0;
+
+}
+
+if(moneyTimer>90){
+
+spawnCoin();
+
+moneyTimer=0;
+
+}
+
+for(let i=enemies.length-1;i>=0;i--){
+
+let e=enemies[i];
+
+e.y+=speed;
+
+drawCar(e.x,e.y,e.color,e.width,e.height);
+
+if(collision(player,e)){
+
+enemies.splice(i,1);
+
+lives--;
+
+sound(130);
+
+updateHUD();
+
+if(lives<=0){
+
+endGame();
+
+return;
+
+}
+
+continue;
+
+}
+
+if(e.y>660){
+
+enemies.splice(i,1);
+
+score+=10;
+
+}
+
+}
+
+for(let i=money.length-1;i>=0;i--){
+
+let c=money[i];
+
+c.y+=speed;
+
+drawCoin(c.x,c.y);
+
+if(Math.abs(player.x+20-c.x)<30&&
+
+Math.abs(player.y+35-c.y)<40){
+
+money.splice(i,1);
+
+coins++;
+
+sound(900);
+
+updateHUD();
+
+continue;
+
+}
+
+if(c.y>660)money.splice(i,1);
+
+}
+
+drawCar(player.x,player.y,colors[selectedCar]);
+
+score++;
+
+speed=Math.min(10,4+score/1500);
+
+updateHUD();
+
+animation=requestAnimationFrame(gameLoop);
+
+}
+
+function endGame(){
+
+running=false;
+
+if(score>record){
+
+record=score;
+
+localStorage.setItem("record",record);
+
+}
+
+document.getElementById("finalScore").textContent=score;
+
+document.getElementById("gameover").classList.remove("hidden");
+
+sound(180);
+
+updateCoins();
+
+}
+
+function setupControl(id,direction){
+
+const button=document.getElementById(id);
+
+button.addEventListener("pointerdown",e=>{
+
+e.preventDefault();
+
+if(direction==="left")leftPressed=true;
+
+else rightPressed=true;
+
+});
+
+["pointerup","pointerleave","pointercancel"].forEach(event=>{
+
+button.addEventListener(event,()=>{
+
+if(direction==="left")leftPressed=false;
+
+else rightPressed=false;
+
+});
+
+});
+
+}
+
+setupControl("left","left");
+
+setupControl("right","right");
+
+document.addEventListener("keydown",e=>{
+
+if(e.key==="ArrowLeft"||e.key==="a")leftPressed=true;
+
+if(e.key==="ArrowRight"||e.key==="d")rightPressed=true;
+
+});
+
+document.addEventListener("keyup",e=>{
+
+if(e.key==="ArrowLeft"||e.key==="a")leftPressed=false;
+
+if(e.key==="ArrowRight"||e.key==="d")rightPressed=false;
+
+});
+
+updateCoins();
 
 </script>
 
 </body>
-</html> l
+
+</html>
