@@ -1,244 +1,69 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Racing Game</title>
-
-<style>
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: #151515;
-  color: white;
-  font-family: Arial, sans-serif;
-  text-align: center;
-}
-
-h1 {
-  color: #00eaff;
-  margin-top: 20px;
-}
-
-#score {
-  font-size: 22px;
-  margin: 10px;
-}
-
-#game {
-  position: relative;
-  width: 320px;
-  height: 500px;
-  margin: auto;
-  overflow: hidden;
-  background: #444;
-  border-left: 6px solid white;
-  border-right: 6px solid white;
-}
-
-#line {
-  position: absolute;
-  left: 50%;
-  height: 100%;
-  border-left: 5px dashed white;
-}
-
-#car {
-  position: absolute;
-  bottom: 20px;
-  left: 45px;
-  width: 40px;
-  height: 70px;
-  background: #00eaff;
-  border-radius: 10px;
-}
-
-.enemy {
-  position: absolute;
-  width: 40px;
-  height: 70px;
-  background: #ff3333;
-  border-radius: 10px;
-}
-
-button {
-  padding: 15px 25px;
-  margin: 8px;
-  border: none;
-  border-radius: 10px;
-  background: #00eaff;
-  font-size: 18px;
-  cursor: pointer;
-}
-
-#menu {
-  margin: 20px;
-}
-
-#gameOver {
-  display: none;
-  margin: 20px;
-  font-size: 22px;
-  color: #ff3333;
-}
-</style>
-</head>
-
-<body>
-
-<h1>🏎️ RACING GAME</h1>
-
-<div id="score">Очки: 0</div>
-<div id="record">Рекорд: 0</div>
-
-<div id="game">
-  <div id="line"></div>
-  <div id="car"></div>
-</div>
-
-<div id="menu">
-  <button onclick="startGame()">▶ Начать игру</button>
-</div>
-
-<div>
-  <button onclick="move(-1)">⬅️</button>
-  <button onclick="move(1)">➡️</button>
-</div>
-
-<div id="gameOver">
-  <h2>💥 Игра окончена!</h2>
-  <p id="finalScore"></p>
-  <button onclick="startGame()">🔄 Играть снова</button>
-</div>
-
-<script>
-
-const car = document.getElementById("car");
-const game = document.getElementById("game");
-const scoreText = document.getElementById("score");
-const recordText = document.getElementById("record");
-
-let lane = 0;
-let score = 0;
-let speed = 5;
-let enemies = [];
-let running = false;
-let animationId;
-let spawnTimer;
-let lastSpawn = 0;
-let lastFrame = 0;
-
-let record = Number(localStorage.getItem("record")) || 0;
-
-recordText.textContent = "Рекорд: " + record;
-
-function move(direction) {
-  if (!running) return;
-
-  lane = Math.max(0, Math.min(2, lane + direction));
-
-  car.style.left = (45 + lane * 90) + "px";
-}
-
-function startGame() {
-
-  cancelAnimationFrame(animationId);
-
-  enemies.forEach(enemy => enemy.remove());
-  enemies = [];
-
-  score = 0;
-  speed = 5;
-  lane = 1;
-  running = true;
-
-  scoreText.textContent = "Очки: 0";
-
-  car.style.left = "135px";
-
-  document.getElementById("menu").style.display = "none";
-  document.getElementById("gameOver").style.display = "none";
-
-  lastFrame = 0;
-  lastSpawn = 0;
-
-  animationId = requestAnimationFrame(update);
-}
-
-function spawnEnemy() {
-
-  const enemy = document.createElement("div");
-
-  enemy.className = "enemy";
-
-  const enemyLane = Math.floor(Math.random() * 3);
-
-  enemy.dataset.lane = enemyLane;
-
-  enemy.style.left = (45 + enemyLane * 90) + "px";
-  enemy.style.top = "-80px";
-
-  game.appendChild(enemy);
-
-  enemies.push(enemy);
-}
-
-function update(timestamp) {
-
-  if (!running) return;
-
-  if (!lastFrame) lastFrame = timestamp;
-
-  const delta = Math.min((timestamp - lastFrame) / 16.67, 3);
-  lastFrame = timestamp;
-
-  if (timestamp - lastSpawn > 1300) {
-    spawnEnemy();
-    lastSpawn = timestamp;
-  }
-
-  enemies = enemies.filter(enemy => {
-
-    let y = parseFloat(enemy.style.top);
-
-    y += speed * delta;
-
-    enemy.style.top = y + "px";
-
-    if (
-      Number(enemy.dataset.lane) === lane &&
-      y > 340 &&
-      y < 460
-    ) {
-      endGame();
-      return false;
-    }
-
-    if (y > 500) {
-
-      enemy.remove();
-
-      score++;
-
-      scoreText.textContent = "Очки: " + score;
-
-      if (score > record) {
-        record = score;
-        localStorage.setItem("record", record);
-        recordText.textContent = "Рекорд: " + record;
+) {
+        endGame();
       }
 
       return false;
     }
 
-    return true;
+    if (y > game.clientHeight) {
+      enemy.remove();
+      score++;
+      return false;
+    }
 
+    return true;
   });
 
-  speed = 5 + score * 0.15;
+  money = money.filter(coin => {
+
+    let y = parseFloat(coin.style.top);
+
+    y += speed * delta;
+    coin.style.top = y + "px";
+
+    const coinLane = Number(coin.dataset.lane);
+
+    if (
+      coinLane === lane &&
+      y > playerY - 35 &&
+      y < playerY + 70
+    ) {
+
+      coin.remove();
+      coins += 5;
+
+      beep(800);
+      updateStats();
+
+      return false;
+    }
+
+    if (y > game.clientHeight) {
+      coin.remove();
+      return false;
+    }
+
+    return true;
+  });
+
+  trees = trees.filter(tree => {
+
+    let y = parseFloat(tree.style.top);
+
+    y += speed * delta;
+    tree.style.top = y + "px";
+
+    if (y > game.clientHeight) {
+      tree.remove();
+      return false;
+    }
+
+    return true;
+  });
+
+  speed = Math.min(5 + score * 0.08, 13);
+
+  updateStats();
 
   animationId = requestAnimationFrame(update);
 }
@@ -247,30 +72,114 @@ function endGame() {
 
   running = false;
 
+  document.getElementById("finalScore").textContent = score;
 
-ocument.getElementById("gameOver").style.display = "block";
+  document.getElementById("gameOver").classList.remove("hidden");
 
-  document.getElementById("finalScore").textContent =
-    "Твои очки: " + score;
+  document.getElementById("menu").classList.remove("hidden");
+
+  document.getElementById("message").textContent = "💥 ФИНИШ!";
 
 }
 
-document.addEventListener("keydown", function(e) {
+function togglePause() {
+
+  if (!running) return;
+
+  paused = !paused;
+
+  document.getElementById("message").textContent =
+    paused ? "⏸️ ПАУЗА" : "🏁 ПОЕХАЛИ!";
+}
+
+function openGarage() {
+
+  if (running) return;
+
+  document.getElementById("garage").classList.remove("hidden");
+
+  renderGarage();
+}
+
+function closeGarage() {
+  document.getElementById("garage").classList.add("hidden");
+}
+
+function renderGarage() {
+
+  const area = document.getElementById("garageCars");
+
+  area.innerHTML = "";
+
+  cars.forEach((item, index) => {
+
+    const button = document.createElement("button");
+
+    const owned = unlocked.includes(index);
+    const selected = selectedCar === index;
+
+    button.textContent =
+      item.emoji + " " + item.name + " — " +
+      (selected ? "ВЫБРАНА" :
+      owned ? "ВЫБРАТЬ" : "КУПИТЬ за " + item.price + " 🪙");
+
+    button.onclick = () => {
+
+      if (owned) {
+
+        selectedCar = index;
+
+        localStorage.setItem("selectedCar", index);
+
+        setCar();
+        renderGarage();
+
+      } else if (coins >= item.price) {
+
+        coins -= item.price;
+
+        unlocked.push(index);
+
+        localStorage.setItem(
+          "unlockedCars",
+          JSON.stringify(unlocked)
+        );
+
+        selectedCar = index;
+
+        localStorage.setItem("selectedCar", index);
+
+        updateStats();
+        setCar();
+        renderGarage();
+
+      } else {
+
+        alert("Недостаточно монет!");
+
+      }
+    };
+
+    area.appendChild(button);
+  });
+}
+
+document.addEventListener("keydown", e => {
 
   if (e.key === "ArrowLeft") move(-1);
 
   if (e.key === "ArrowRight") move(1);
 
+  if (e.key === " " || e.key === "Escape") {
+    togglePause();
+  }
+
 });
+
+setCar();
+updateStats();
 
 </script>
 
 </body>
-</html> d
-
-
-
-
-
-
-
+</html> l
